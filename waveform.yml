@@ -1,0 +1,69 @@
+---
+
+settings:
+
+  # Backend to use
+  backend:
+    name: keras
+    backend: tensorflow
+
+  # Data provider settings
+  provider: &provider
+    batch_size: 32
+
+  # Hyperparameters
+  cnn:
+    kernels: [32]
+    size: [[3, 3]]
+    strides: [[1, 1]]
+
+# The model itself.
+# This is parsed immediately after the "parameters" block.
+model:
+  - input: trial
+  - expand: -1
+  - for:
+      range: "{{ cnn.kernels|length }}"
+      iterate:
+        - convolution:
+            kernels: "{{ cnn.kernels[index] }}"
+            size: "{{ cnn.size[index] }}"
+            strides: "{{ cnn.strides[index] }}"
+        - activation: relu
+  - flatten:
+  - dense: 128
+  - dropout: 0.15
+  - dense: 6
+  - activation: softmax
+    name: category_label
+
+# The training section
+train:
+  data:
+    - pickle: training.kur.pkl
+  provider:
+    <<: *provider
+  log: mindreader.kur.log
+  epochs: 256
+  weights:
+    initial: mindreader.best.valid.kur.w
+    best: mindreader.best.train.kur.w
+    last: mindreader.last.kur.w
+
+  optimizer:
+    name: adam
+    learning_rate: 0.001
+
+validate:
+  data:
+    - pickle: validation.kur.pkl
+  provider:
+    <<: *provider
+  weights: mindreader.best.valid.kur.w
+
+# The loss function selection
+loss:
+  # The target is the label you want your model to guess and get correct
+  - target: category_label
+    name: categorical_crossentropy
+

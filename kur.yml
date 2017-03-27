@@ -1,0 +1,79 @@
+---
+
+settings:
+
+  # Backend to use
+  backend:
+    name: keras
+    backend: tensorflow
+
+  # Data provider settings
+  provider: &provider
+    batch_size: 16
+
+  # Hyperparameters
+  cnn:
+    kernels: [32, 64]
+    size: [[3, 3], [3, 3]]
+    strides: [[1, 1], [1, 1]]
+
+# The model itself.
+# This is parsed immediately after the "parameters" block.
+model:
+  - input: brain_probe_image
+  - expand: -1
+  - for:
+      range: "{{ cnn.kernels|length }}"
+      iterate:
+        - convolution:
+            kernels: "{{ cnn.kernels[index] }}"
+            size: "{{ cnn.size[index] }}"
+            strides: "{{ cnn.strides[index] }}"
+        - activation: relu
+        - convolution:
+            kernels: "{{ cnn.kernels[index] }}"
+            size: "{{ cnn.size[index] }}"
+            strides: "{{ cnn.strides[index] }}"
+        - activation: relu
+        - pool:
+            size: [2, 2]
+            type: max
+  - flatten:
+  - dense: 6
+  - activation: softmax
+    name: category_label
+
+# The training section
+train:
+  data:
+    - mind:
+        path: train
+        #url: https://kur.deepgram.com/data/mind/stanford-mind-reading-train.tar.gz
+  provider:
+    <<: *provider
+  log: mindreading_category.log
+  epochs: 8
+  weights:
+    initial: mindreading_category.best.valid.w
+    best: mindreading_category.best.train.w
+    last: mindreading_category.last.w
+
+  optimizer:
+    name: adam
+    learning_rate: 0.001
+
+validate:
+  data:
+    - mind:
+        path: validate
+        #url: https://kur.deepgram.com/data/mind/stanford-mind-reading-validate.tar.gz
+  provider:
+    <<: *provider
+  weights: mindreading_category.best.valid.w
+
+# The loss function selection
+loss:
+  # The target is the label you want your model to guess and get correct
+  - target: category_label
+    name: categorical_crossentropy
+

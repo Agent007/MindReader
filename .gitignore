@@ -1,0 +1,9 @@
+.ipynb_checkpoints
+data
+train
+validate
+*.gz
+*.w
+*.log
+*.pkl
+weights.hdf5
